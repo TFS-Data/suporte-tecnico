@@ -11,7 +11,7 @@ export const LoginView = (system = {}) => {
                     : `<span id="login-logo-icon" class="material-symbols-outlined text-[64px] text-secondary">support_agent</span>`
                 }
             </div>
-            <h1 id="login-title" class="font-display-lg text-display-lg text-primary">${title}</h1>
+            <h1 id="login-title" class="text-2xl font-bold text-primary mb-2">${title}</h1>
             <p id="login-subtitle" class="text-on-surface-variant font-body-md">Acesse sua conta para continuar</p>
         </div>
 
