@@ -52,6 +52,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function initApp() {
     console.log("Iniciando aplicação...");
+
+    // 1. Carregar dados do DB PRIMEIRO (categorias, status, configurações)
+    //    para que os selects do modal sempre tenham os UUIDs reais.
+    try {
+        const [cats, stats, settings] = await Promise.all([
+            supabase.from('categories').select('*'),
+            supabase.from('status_types').select('*'),
+            supabase.from('system_settings').select('*').limit(1).maybeSingle()
+        ]);
+        if (cats.data && cats.data.length > 0) AppState.categories = cats.data;
+        if (stats.data && stats.data.length > 0) AppState.statusTypes = stats.data;
+        if (settings.data) {
+            AppState.system.title    = settings.data.title    || AppState.system.title;
+            AppState.system.subtitle = settings.data.subtitle || AppState.system.subtitle;
+            if (settings.data.logo_url) AppState.system.logo_url = settings.data.logo_url;
+        }
+    } catch (err) {
+        console.warn("Usando dados locais (Mock). Erro DB:", err.message);
+    }
+
+    // 2. Agora verificar sessão e mostrar layout/login
     try {
         const storedSession = localStorage.getItem('sb-session');
         if (storedSession) {
@@ -59,6 +80,8 @@ async function initApp() {
             AppState.session = JSON.parse(storedSession);
             AppState.user = AppState.session.user;
             showLayout();
+            // Carregar chamados após mostrar layout
+            loadTickets().catch(err => console.warn("Tickets offline:", err.message));
         } else {
             console.log("Nenhuma sessão. Exibindo login.");
             showLogin();
@@ -68,43 +91,23 @@ async function initApp() {
         localStorage.removeItem('sb-session');
         showLogin();
     }
-    
-    fetchAppData().then(() => {
-        loadSystemSettings().catch(err => console.warn("Supabase Settings offline:", err.message));
-        loadTickets().catch(err => console.warn("Supabase Tickets offline:", err.message));
-    });
-    try {
-        const [cats, stats] = await Promise.all([
-            supabase.from('categories').select('*'),
-            supabase.from('status_types').select('*')
-        ]);
-        if (cats.data && cats.data.length > 0) AppState.categories = cats.data;
-        if (stats.data && stats.data.length > 0) AppState.statusTypes = stats.data;
-    } catch (err) {
-        console.warn("Usando categorias/status locais (Mock). Erro DB:", err.message);
-    }
 }
 
+// loadSystemSettings não é mais necessário como função separada pois
+// as configurações já são carregadas em initApp() na primeira chamada ao DB.
+// Mantida aqui apenas para recarregar manualmente se necessário.
 async function loadSystemSettings() {
     try {
-        console.log("Iniciando carga de configurações...");
         const { data, error } = await supabase.from('system_settings').select('*').limit(1).maybeSingle();
-        
         if (error) throw error;
-        
         if (data) {
-            console.log("Configurações carregadas:", data);
-            AppState.system.title = data.title || AppState.system.title;
+            AppState.system.title    = data.title    || AppState.system.title;
             AppState.system.subtitle = data.subtitle || AppState.system.subtitle;
             if (data.logo_url) AppState.system.logo_url = data.logo_url;
-            
-            // Atualiza a UI imediatamente se os elementos existirem
             updateUI();
-        } else {
-            console.log("Nenhuma configuração encontrada, usando padrões.");
         }
     } catch (err) {
-        console.error("Erro crítico ao carregar configurações:", err);
+        console.error("Erro ao recarregar configurações:", err);
     }
 }
 
@@ -560,33 +563,51 @@ function openTicketModal(id = null) {
 
 function saveTicket(id, modalEl) {
     const isNew = !id;
-    const clientId = (isNew ? AppState.user.id : AppState.tickets.find(t => t.id === id).client_id);
-    const validClientId = (clientId && clientId.includes('-')) ? clientId : null;
 
-    const catId = document.getElementById('tk-category').value;
-    const statId = document.getElementById('tk-status').value;
-    const validCatId = (catId && catId.includes('-')) ? catId : null;
-    const validStatId = (statId && statId.includes('-')) ? statId : null;
+    // Pega o UUID direto do valor do select (já são UUIDs reais vindos do AppState.categories/statusTypes)
+    const catId  = document.getElementById('tk-category').value  || null;
+    const statId = document.getElementById('tk-status').value    || null;
+    const assignedId = document.getElementById('tk-assigned').value || null;
+
+    // client_id: só inclui se for um UUID real (evita enviar id mock de sessão local)
+    const rawClientId = isNew ? AppState.user.id : (AppState.tickets.find(t => t.id === id)?.client_id || null);
+    const isUUID = (val) => val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+    const validClientId   = isUUID(rawClientId)  ? rawClientId  : null;
+    const validAssignedId = isUUID(assignedId)   ? assignedId   : null;
+
+    const statusText = document.getElementById('tk-status').options[
+        document.getElementById('tk-status').selectedIndex
+    ].text;
 
     const data = {
-        title: document.getElementById('tk-title').value,
-        description: document.getElementById('tk-desc').value,
-        category_id: validCatId,
-        status_id: validStatId,
-        priority: document.getElementById('tk-priority').value,
-        assigned_to_id: null,
-        client_id: validClientId,
-        created_at: isNew ? new Date() : AppState.tickets.find(t => t.id === id).created_at,
-        closed_at: document.getElementById('tk-status').options[document.getElementById('tk-status').selectedIndex].text === 'Concluído' ? new Date() : null
+        title:          document.getElementById('tk-title').value.trim(),
+        description:    document.getElementById('tk-desc').value.trim(),
+        category_id:    catId,
+        status_id:      statId,
+        priority:       document.getElementById('tk-priority').value,
+        assigned_to_id: validAssignedId,
+        client_id:      validClientId,
+        closed_at:      statusText === 'Concluído' ? new Date().toISOString() : null
     };
+
+    // Não inclui created_at no insert — o banco usa DEFAULT now()
+    if (!isNew) {
+        data.created_at = AppState.tickets.find(t => t.id === id)?.created_at || undefined;
+    }
+
+    const saveBtn = modalEl.querySelector('button[type="submit"]');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Salvando...'; }
 
     const action = isNew 
         ? supabase.from('tickets').insert([data])
         : supabase.from('tickets').update(data).eq('id', id);
 
     action.then(({ error }) => {
-        if (error) return alert("Erro ao salvar chamado: " + error.message);
-        
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = isNew ? 'Abrir Chamado' : 'Salvar Alterações'; }
+        if (error) {
+            console.error('Erro ao salvar chamado:', error);
+            return alert('Erro ao salvar chamado: ' + error.message);
+        }
         loadTickets().then(() => {
             modalEl.remove();
             showToast(isNew ? 'Chamado aberto com sucesso!' : 'Chamado atualizado!');
@@ -705,19 +726,49 @@ function initSettings() {
             logoUpload.onchange = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
+
+                // Validação básica de tipo e tamanho (max 2MB)
+                if (!file.type.startsWith('image/')) {
+                    return alert('Por favor, selecione um arquivo de imagem (JPG, PNG, GIF, WebP).');
+                }
+                if (file.size > 2 * 1024 * 1024) {
+                    return alert('A imagem deve ter no máximo 2MB.');
+                }
+
                 try {
                     showToast('Enviando logo...');
-                    const { data, error } = await supabase.storage.from('system').upload(`logo-${Date.now()}`, file);
-                    if (error) throw error;
-                    const { data: { publicUrl } } = supabase.storage.from('system').getPublicUrl(data.path);
-                    
-                    // Usar upsert aqui também para garantir persistência
-                    await supabase.from('system_settings').upsert({ id: 1, logo_url: publicUrl }, { onConflict: 'id' });
-                    
+                    const ext = file.name.split('.').pop();
+                    const fileName = `logo-${Date.now()}.${ext}`;
+
+                    // Tenta fazer upload no bucket 'logos' (criado via SQL abaixo)
+                    const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('logos')
+                        .upload(fileName, file, { upsert: true, contentType: file.type });
+
+                    if (uploadError) throw uploadError;
+
+                    const { data: urlData } = supabase.storage.from('logos').getPublicUrl(uploadData.path);
+                    const publicUrl = urlData.publicUrl;
+
+                    // Salvar a URL no banco
+                    const { error: dbError } = await supabase
+                        .from('system_settings')
+                        .upsert({ id: 1, logo_url: publicUrl }, { onConflict: 'id' });
+
+                    if (dbError) throw dbError;
+
+                    // Atualizar estado e preview
                     AppState.system.logo_url = publicUrl;
+                    const preview = document.getElementById('sys-logo-preview');
+                    if (preview) {
+                        preview.innerHTML = `<img src="${publicUrl}" class="w-16 h-16 object-contain rounded-lg" alt="Logo">`;
+                    }
                     updateUI();
-                    showToast('Logo atualizado!');
-                } catch (err) { alert("Erro logo: " + err.message); }
+                    showToast('Logo atualizado com sucesso!');
+                } catch (err) {
+                    console.error('Erro no upload do logo:', err);
+                    alert('Erro ao enviar logo: ' + err.message);
+                }
             };
         }
 
