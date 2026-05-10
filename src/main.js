@@ -465,9 +465,9 @@ function renderDashboard(view) {
                 </button>
             </div>
             <div class="flex flex-wrap gap-sm">
-                ${AppState.categories.map(cat => `
-                    <button class="${cat.id === '1' ? 'bg-secondary text-on-secondary shadow-md' : 'bg-surface text-on-surface-variant border border-outline-variant hover:bg-surface-container-low'} text-sm font-bold px-md py-sm rounded-full flex items-center gap-sm transition-all active:scale-95">
-                        <span class="material-symbols-outlined text-[18px]">${cat.icon}</span>
+                ${AppState.categories.map((cat, idx) => `
+                    <button class="${idx === 0 ? 'bg-secondary text-on-secondary shadow-md' : 'bg-surface text-on-surface-variant border border-outline-variant hover:bg-surface-container-low'} text-sm font-bold px-md py-sm rounded-full flex items-center gap-sm transition-all active:scale-95">
+                        <span class="material-symbols-outlined text-[18px]">${cat.icon || 'label'}</span>
                         ${cat.name}
                     </button>
                 `).join('')}
