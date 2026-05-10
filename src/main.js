@@ -69,12 +69,20 @@ async function initApp() {
         showLogin();
     }
     
-    loadSystemSettings().catch(err => console.warn("Supabase Settings offline:", err.message));
-    loadTickets().catch(err => console.warn("Supabase Tickets offline:", err.message));
-}
-
-async function fetchAppData() {
-    // Mantido vazio para reversão de lógica para mock data
+    fetchAppData().then(() => {
+        loadSystemSettings().catch(err => console.warn("Supabase Settings offline:", err.message));
+        loadTickets().catch(err => console.warn("Supabase Tickets offline:", err.message));
+    });
+    try {
+        const [cats, stats] = await Promise.all([
+            supabase.from('categories').select('*'),
+            supabase.from('status_types').select('*')
+        ]);
+        if (cats.data && cats.data.length > 0) AppState.categories = cats.data;
+        if (stats.data && stats.data.length > 0) AppState.statusTypes = stats.data;
+    } catch (err) {
+        console.warn("Usando categorias/status locais (Mock). Erro DB:", err.message);
+    }
 }
 
 async function loadSystemSettings() {
@@ -552,14 +560,17 @@ function openTicketModal(id = null) {
 
 function saveTicket(id, modalEl) {
     const isNew = !id;
+    const clientId = (isNew ? AppState.user.id : AppState.tickets.find(t => t.id === id).client_id);
+    const validClientId = (clientId && clientId.includes('-')) ? clientId : null;
+
     const data = {
         title: document.getElementById('tk-title').value,
         description: document.getElementById('tk-desc').value,
-        category_id: document.getElementById('tk-category').value,
-        status_id: document.getElementById('tk-status').value,
+        category_id: document.getElementById('tk-category').value || null,
+        status_id: document.getElementById('tk-status').value || null,
         priority: document.getElementById('tk-priority').value,
-        assigned_to_id: document.getElementById('tk-assigned').value || null,
-        client_id: isNew ? AppState.user.id : AppState.tickets.find(t => t.id === id).client_id,
+        assigned_to_id: null,
+        client_id: validClientId,
         created_at: isNew ? new Date() : AppState.tickets.find(t => t.id === id).created_at,
         closed_at: document.getElementById('tk-status').options[document.getElementById('tk-status').selectedIndex].text === 'Concluído' ? new Date() : null
     };
