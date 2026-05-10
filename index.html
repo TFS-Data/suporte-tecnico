@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Suporte Técnico - Painel Geral</title>
+    
+    <!-- Fonts & Icons Consolidado -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS Play CDN Tema -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              "on-secondary-container": "#fefcff",
+              "surface-tint": "#545f73",
+              "on-tertiary": "#ffffff",
+              "error-container": "#ffdad6",
+              "tertiary-container": "#35260c",
+              "on-error-container": "#93000a",
+              "secondary-fixed-dim": "#adc6ff",
+              "on-primary-fixed": "#111c2d",
+              "on-secondary": "#ffffff",
+              "tertiary": "#1e1200",
+              "outline": "#75777d",
+              "surface-container-high": "#eae7e9",
+              "on-error": "#ffffff",
+              "tertiary-fixed-dim": "#ddc39d",
+              "on-secondary-fixed-variant": "#004395",
+              "secondary-container": "#2170e4",
+              "on-primary-fixed-variant": "#3c475a",
+              "surface": "#fbf8fa",
+              "surface-container": "#f0edef",
+              "surface-variant": "#e4e2e3",
+              "primary-container": "#1e293b",
+              "error": "#ba1a1a",
+              "secondary": "#0058be",
+              "surface-container-low": "#f5f3f4",
+              "inverse-primary": "#bcc7de",
+              "on-secondary-fixed": "#001a42",
+              "on-primary": "#ffffff",
+              "on-tertiary-fixed-variant": "#564427",
+              "surface-bright": "#fbf8fa",
+              "inverse-on-surface": "#f3f0f2",
+              "on-background": "#1b1b1d",
+              "on-surface-variant": "#45474c",
+              "primary-fixed": "#d8e3fb",
+              "primary-fixed-dim": "#bcc7de",
+              "on-primary-container": "#8590a6",
+              "surface-container-lowest": "#ffffff",
+              "on-surface": "#1b1b1d",
+              "surface-dim": "#dcd9db",
+              "on-tertiary-container": "#a38c6a",
+              "surface-container-highest": "#e4e2e3",
+              "inverse-surface": "#303032",
+              "on-tertiary-fixed": "#271902",
+              "secondary-fixed": "#d8e2ff",
+              "outline-variant": "#c5c6cd",
+              "background": "#fbf8fa",
+              "primary": "#091426",
+              "tertiary-fixed": "#fadfb8"
+            },
+            spacing: { "lg": "24px", "sm": "8px", "md": "16px", "xs": "4px", "xl": "48px" }
+          }
+        }
+      }
+    </script>
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background-color: #c5c6cd;
+            border-radius: 9999px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #75777d;
+        }
+
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Sidebar mobile overlay fix */
+        #sidebar.mobile-open {
+            transform: translateX(0) !important;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex">
+
+<!-- Root Container for Dynamic Rendering -->
+<div id="app-root" class="w-full min-h-screen flex hidden">
+    <!-- SideNavBar -->
+    <nav id="sidebar" class="bg-primary dark:bg-surface-container-lowest text-on-primary dark:text-primary text-xs uppercase tracking-wider shadow-md border-r border-outline-variant dark:border-outline fixed left-0 top-0 h-full flex flex-col p-md space-y-4 z-50 w-64 -translate-x-full md:translate-x-0 transition-transform duration-300">
+        
+        <!-- Logo Section (Moved to Top) -->
+        <div class="mb-lg px-xs">
+            <div id="sidebar-logo-container" class="flex items-center gap-sm">
+                <div class="bg-secondary p-xs rounded-lg flex items-center justify-center">
+                    <span id="app-logo-icon" class="material-symbols-outlined text-on-secondary">support_agent</span>
+                    <img id="app-logo-img" src="" alt="Logo" class="hidden w-8 h-8 object-contain">
+                </div>
+                <div>
+                    <h1 id="app-title" class="text-lg font-black leading-none text-on-primary dark:text-primary">Suporte Técnico</h1>
+                    <p id="app-subtitle" class="text-primary-fixed-dim mt-1 text-[10px] opacity-70">Gestão Operacional</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Close Button -->
+        <div class="md:hidden flex justify-end mb-2">
+            <button id="close-sidebar" class="p-xs text-on-primary hover:bg-primary-container rounded-full">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        
+        <button id="btn-new-ticket" class="bg-secondary text-on-secondary rounded-lg py-sm px-md mb-lg text-base font-semibold flex items-center justify-center gap-sm hover:bg-secondary-container transition-colors shadow-sm">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
+            Novo Chamado
+        </button>
+        
+        <ul class="space-y-sm flex-1">
+            <li id="menu-dashboard">
+                <a data-page="dashboard" class="nav-item bg-secondary-container text-on-secondary-container rounded-lg font-bold flex items-center gap-md py-sm px-md active:opacity-80 transition-opacity cursor-pointer">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    Painel Geral
+                </a>
+            </li>
+            <li id="menu-tickets">
+                <a data-page="tickets" class="nav-item text-primary-fixed-dim hover:text-on-primary hover:bg-primary-container transition-all duration-200 flex items-center gap-md py-sm px-md rounded-lg active:opacity-80 transition-opacity cursor-pointer">
+                    <span class="material-symbols-outlined">confirmation_number</span>
+                    Meus Chamados
+                </a>
+            </li>
+            <li id="menu-reports">
+                <a data-page="reports" class="nav-item text-primary-fixed-dim hover:text-on-primary hover:bg-primary-container transition-all duration-200 flex items-center gap-md py-sm px-md rounded-lg active:opacity-80 transition-opacity cursor-pointer">
+                    <span class="material-symbols-outlined">analytics</span>
+                    Relatórios
+                </a>
+            </li>
+            <li id="menu-inventory">
+                <a data-page="inventory" class="nav-item text-primary-fixed-dim hover:text-on-primary hover:bg-primary-container transition-all duration-200 flex items-center gap-md py-sm px-md rounded-lg active:opacity-80 transition-opacity cursor-pointer">
+                    <span class="material-symbols-outlined">inventory</span>
+                    Inventário
+                </a>
+            </li>
+            <li id="menu-settings">
+                <a data-page="settings" class="nav-item text-primary-fixed-dim hover:text-on-primary hover:bg-primary-container transition-all duration-200 flex items-center gap-md py-sm px-md rounded-lg active:opacity-80 transition-opacity cursor-pointer">
+                    <span class="material-symbols-outlined">settings</span>
+                    Configurações
+                </a>
+            </li>
+        </ul>
+        
+        <!-- User Section (Bottom Left) -->
+        <div id="sidebar-user-card" class="mt-auto flex items-center gap-sm p-sm border-t border-primary-fixed-dim/30 pt-md bg-primary-container/20 rounded-xl mb-4">
+            <div class="relative">
+                <img id="user-avatar-sidebar" alt="Avatar" class="w-10 h-10 rounded-full bg-surface object-cover border-2 border-secondary" src="/assets/images/avatar1.jpg" />
+            </div>
+            <div class="flex-1 min-w-0">
+                <p id="user-role-sidebar" class="font-label-caps text-[10px] text-primary-fixed-dim leading-none mb-1">TI Support</p>
+                <p id="user-name-sidebar" class="text-base text-sm font-bold text-on-primary truncate">Admin User</p>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col md:ml-64 w-full">
+        <!-- TopNavBar -->
+        <header class="bg-surface dark:bg-surface-container text-primary dark:text-primary-fixed text-base border-b border-outline-variant dark:border-outline shadow-sm flex justify-between items-center w-full px-lg py-sm sticky top-0 z-40 h-[72px]">
+            <div class="flex items-center gap-md lg:hidden">
+                <button id="open-sidebar" class="material-symbols-outlined text-2xl font-semibold font-bold text-primary dark:text-primary-fixed focus:outline-none">menu</button>
+            </div>
+            
+            <!-- Dynamic Search Area -->
+            <div id="search-container" class="flex-1 max-w-2xl px-md ml-4 lg:ml-0 transition-opacity duration-300">
+                <div class="relative group">
+                    <button id="btn-search" class="absolute left-sm top-1/2 -translate-y-1/2 text-outline group-focus-within:text-secondary hover:scale-110 transition-all">
+                        <span class="material-symbols-outlined">search</span>
+                    </button>
+                    <input id="search-input" class="w-full bg-surface-container-low border border-outline-variant rounded-lg py-sm pl-xl pr-md text-base text-base focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all" 
+                           placeholder="Buscar chamados por título ou usuário..." type="text" />
+                </div>
+            </div>
+
+            <div class="flex items-center gap-md ml-auto">
+                <!-- Notifications -->
+                <button class="relative p-sm text-on-surface-variant hover:text-secondary hover:bg-surface-container-low transition-colors rounded-full cursor-pointer">
+                    <span class="material-symbols-outlined">notifications</span>
+                    <span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface"></span>
+                </button>
+
+                <!-- Help Button -->
+                <div class="relative group hidden sm:block">
+                    <button id="btn-help" class="p-sm text-on-surface-variant hover:text-secondary hover:bg-surface-container-low transition-colors rounded-full cursor-pointer active:scale-95 transition-transform flex items-center justify-center">
+                        <span class="material-symbols-outlined">help</span>
+                    </button>
+                    <!-- Help Dropdown Content (Managed via JS) -->
+                    <div id="help-dropdown" class="absolute right-0 top-full mt-2 w-64 bg-surface rounded-lg shadow-xl border border-outline-variant hidden animate-fadeIn z-50">
+                        <div class="p-md">
+                            <h4 id="help-text" class="text-lg font-semibold text-sm text-on-surface mb-md">Como podemos ajudar?</h4>
+                            <div class="space-y-sm text-sm text-on-surface-variant">
+                                <div id="help-email" class="flex items-center gap-sm hidden">
+                                    <span class="material-symbols-outlined text-[18px]">mail</span>
+                                    <a href="" class="hover:text-secondary"></a>
+                                </div>
+                                <div id="help-site" class="flex items-center gap-sm hidden">
+                                    <span class="material-symbols-outlined text-[18px]">language</span>
+                                    <a href="" target="_blank" class="hover:text-secondary"></a>
+                                </div>
+                                <div id="help-phone" class="flex items-center gap-sm hidden">
+                                    <span class="material-symbols-outlined text-[18px]">phone</span>
+                                    <span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Icon -->
+                <button class="p-sm text-on-surface-variant hover:text-secondary hover:bg-surface-container-low transition-colors rounded-full cursor-pointer">
+                    <span class="material-symbols-outlined">settings</span>
+                </button>
+
+                <!-- User Profile Dropdown -->
+                <div class="relative">
+                    <button id="user-menu-trigger" class="flex items-center gap-sm p-xs hover:bg-surface-container-low rounded-lg transition-colors cursor-pointer group">
+                        <div class="text-right hidden sm:block">
+                            <p id="header-user-name" class="text-sm font-bold text-on-surface group-hover:text-secondary transition-colors">Admin User</p>
+                            <p class="text-[10px] text-on-surface-variant uppercase font-bold tracking-tighter">TI Support</p>
+                        </div>
+                        <img id="user-avatar-header" alt="Avatar" class="w-10 h-10 rounded-full border-2 border-outline-variant group-hover:border-secondary transition-all object-cover" src="https://ui-avatars.com/api/?name=Admin+User&background=0058be&color=fff" />
+                    </button>
+                    
+                    <div id="user-dropdown" class="absolute right-0 top-full mt-2 w-56 bg-surface rounded-lg shadow-xl border border-outline-variant hidden animate-fadeIn z-50 overflow-hidden">
+                        <div class="p-md bg-surface-container-low border-b border-outline-variant/30">
+                            <p id="dropdown-user-name" class="text-base font-bold text-on-surface">Admin User</p>
+                            <p id="dropdown-user-email" class="text-[12px] text-on-surface-variant truncate">admin@suporte.com</p>
+                        </div>
+                        <div class="p-sm">
+                            <button id="btn-profile" class="w-full flex items-center gap-md py-sm px-md rounded-lg hover:bg-surface-container-low text-on-surface transition-colors text-sm">
+                                <span class="material-symbols-outlined">account_circle</span>
+                                Perfil do Usuário
+                            </button>
+                            <div class="h-[1px] bg-outline-variant/30 my-sm"></div>
+                            <button id="btn-logout" class="w-full flex items-center gap-md py-sm px-md rounded-lg hover:bg-error/10 text-error transition-colors text-sm font-bold">
+                                <span class="material-symbols-outlined">logout</span>
+                                Sair do Sistema
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main id="app-content" class="flex-1 p-lg md:p-lg overflow-auto bg-background">
+            <!-- Dynamic Content -->
+        </main>
+
+    <!-- Overlay para o menu mobile -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-primary/50 backdrop-blur-sm z-40 hidden md:hidden"></div>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
