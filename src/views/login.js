@@ -5,10 +5,10 @@ export const LoginView = (system = {}) => {
 <div class="w-full flex-1 min-h-screen flex items-center justify-center bg-primary p-md" style="width: 100vw; height: 100vh;">
     <div class="w-full bg-surface rounded-lg shadow-xl p-xl animate-fadeIn" style="max-width: 440px; width: 100%; margin: 16px;">
         <div class="text-center mb-xl">
-            <div id="login-logo-container" class="inline-flex items-center justify-center w-20 h-20 bg-primary-container rounded-full mb-md overflow-hidden">
+            <div id="login-logo-container" class="inline-flex items-center justify-center w-28 h-28 bg-primary-container rounded-full mb-md overflow-hidden">
                 ${logoUrl
-                    ? `<img id="login-logo-img" src="${logoUrl}" alt="Logo" class="w-full h-full object-cover">`
-                    : `<span id="login-logo-icon" class="material-symbols-outlined text-[48px] text-secondary">support_agent</span>`
+                    ? `<img id="login-logo-img" src="${logoUrl}" alt="Logo" class="w-full h-full object-contain p-2">`
+                    : `<span id="login-logo-icon" class="material-symbols-outlined text-[64px] text-secondary">support_agent</span>`
                 }
             </div>
             <h1 id="login-title" class="font-display-lg text-display-lg text-primary">${title}</h1>
