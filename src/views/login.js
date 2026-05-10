@@ -7,7 +7,7 @@ export const LoginView = (system = {}) => {
         <div class="text-center mb-xl">
             <div id="login-logo-container" class="inline-flex items-center justify-center w-28 h-28 bg-primary-container rounded-full mb-md overflow-hidden">
                 ${logoUrl
-                    ? `<img id="login-logo-img" src="${logoUrl}" alt="Logo" class="w-full h-full object-contain p-2">`
+                    ? `<img id="login-logo-img" src="${logoUrl}" alt="Logo" class="w-full h-full object-cover">`
                     : `<span id="login-logo-icon" class="material-symbols-outlined text-[64px] text-secondary">support_agent</span>`
                 }
             </div>
