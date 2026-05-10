@@ -53,16 +53,18 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initApp() {
     console.log("Iniciando aplicação...");
 
-    // 1. Carregar dados do DB PRIMEIRO (categorias, status, configurações)
+    // 1. Carregar dados do DB PRIMEIRO (categorias, status, configurações, usuários)
     //    para que os selects do modal sempre tenham os UUIDs reais.
     try {
-        const [cats, stats, settings] = await Promise.all([
+        const [cats, stats, settings, users] = await Promise.all([
             supabase.from('categories').select('*'),
             supabase.from('status_types').select('*'),
-            supabase.from('system_settings').select('*').limit(1).maybeSingle()
+            supabase.from('system_settings').select('*').limit(1).maybeSingle(),
+            supabase.from('profiles').select('*').order('full_name')
         ]);
-        if (cats.data && cats.data.length > 0) AppState.categories = cats.data;
-        if (stats.data && stats.data.length > 0) AppState.statusTypes = stats.data;
+        if (cats.data && cats.data.length > 0)   AppState.categories = cats.data;
+        if (stats.data && stats.data.length > 0)  AppState.statusTypes = stats.data;
+        if (users.data && users.data.length > 0)  AppState.users = users.data;
         if (settings.data) {
             AppState.system.title    = settings.data.title    || AppState.system.title;
             AppState.system.subtitle = settings.data.subtitle || AppState.system.subtitle;
@@ -79,6 +81,10 @@ async function initApp() {
             console.log("Sessão encontrada.");
             AppState.session = JSON.parse(storedSession);
             AppState.user = AppState.session.user;
+            // Recarregar dados do usuário logado do banco (caso tenham mudado)
+            const { data: freshUser } = await supabase
+                .from('profiles').select('*').eq('id', AppState.user.id).maybeSingle();
+            if (freshUser) AppState.user = freshUser;
             showLayout();
             // Carregar chamados após mostrar layout
             loadTickets().catch(err => console.warn("Tickets offline:", err.message));
@@ -688,14 +694,36 @@ function initSettings() {
         document.getElementById('prof-phone').value = AppState.user.phone || '';
         document.getElementById('profile-preview').src = AppState.user.avatar_url || '/assets/images/avatar1.jpg';
 
-        fProf.onsubmit = (e) => {
+        fProf.onsubmit = async (e) => {
             e.preventDefault();
-            AppState.user.full_name = document.getElementById('prof-name').value;
-            AppState.user.email = document.getElementById('prof-email').value;
-            AppState.user.phone = document.getElementById('prof-phone').value;
-            AppState.user.job_title = document.getElementById('prof-job').value;
+            const updates = {
+                full_name: document.getElementById('prof-name').value.trim(),
+                email:     document.getElementById('prof-email').value.trim(),
+                phone:     document.getElementById('prof-phone').value.trim(),
+                job_title: document.getElementById('prof-job').value.trim(),
+                updated_at: new Date().toISOString()
+            };
+
+            const isUUID = (val) => val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+            if (isUUID(AppState.user.id)) {
+                // Usuário real do banco: salvar na tabela profiles
+                const { error } = await supabase
+                    .from('profiles')
+                    .update(updates)
+                    .eq('id', AppState.user.id);
+                if (error) {
+                    console.error('Erro ao salvar perfil:', error);
+                    return alert('Erro ao salvar perfil: ' + error.message);
+                }
+            }
+
+            // Atualizar memória e sessão salva no localStorage
+            Object.assign(AppState.user, updates);
+            AppState.session.user = AppState.user;
+            localStorage.setItem('sb-session', JSON.stringify(AppState.session));
             updateUI();
-            showToast('Perfil atualizado localmente!');
+            showToast('Perfil atualizado com sucesso!');
         };
         
         document.getElementById('avatar-upload').onchange = async (e) => {
@@ -924,19 +952,30 @@ function renderStatusList() {
 
 // Expor funções globalmente para acesso via onclick inline
 window._editUser = function(id) { openUserModal(id); };
-window._deleteUser = function(id) {
+window._deleteUser = async function(id) {
     if (!confirm('Excluir este usuário?')) return;
+    const isUUID = (val) => val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+    if (isUUID(id)) {
+        const { error } = await supabase.from('profiles').delete().eq('id', id);
+        if (error) return alert('Erro ao excluir usuário: ' + error.message);
+    }
     AppState.users = AppState.users.filter(u => u.id !== id);
     renderUsersTable();
     showToast('Usuário excluído!', 'error');
 };
-window._deleteCategory = function(id) {
+window._deleteCategory = async function(id) {
+    const isUUID = (val) => val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+    if (isUUID(id)) await supabase.from('categories').delete().eq('id', id);
     AppState.categories = AppState.categories.filter(c => c.id !== id);
     renderCategoryList();
+    showToast('Categoria removida!');
 };
-window._deleteStatus = function(id) {
+window._deleteStatus = async function(id) {
+    const isUUID = (val) => val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+    if (isUUID(id)) await supabase.from('status_types').delete().eq('id', id);
     AppState.statusTypes = AppState.statusTypes.filter(s => s.id !== id);
     renderStatusList();
+    showToast('Status removido!');
 };
 
 function openUserModal(id = null) {
@@ -994,31 +1033,59 @@ function openUserModal(id = null) {
     document.getElementById('cancel-user-modal').onclick = close;
     div.onclick = (e) => { if (e.target === div) close(); };
 
-    document.getElementById('form-user').onsubmit = (e) => {
+    document.getElementById('form-user').onsubmit = async (e) => {
         e.preventDefault();
-        const name  = document.getElementById('u-name').value.trim();
-        const email = document.getElementById('u-email').value.trim();
-        const job   = document.getElementById('u-job').value.trim();
-        const role  = document.getElementById('u-role').value;
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Salvando...'; }
 
-        if (isEdit) {
-            const idx = AppState.users.findIndex(u => u.id === id);
-            AppState.users[idx] = { ...AppState.users[idx], full_name: name, email, job_title: job, role };
-            showToast('Usuário atualizado!');
-        } else {
-            AppState.users.push({
-                id: Date.now().toString(),
-                full_name: name,
-                email,
-                job_title: job,
-                role,
-                avatar_url: ''
-            });
-            showToast('Usuário cadastrado!');
+        const name     = document.getElementById('u-name').value.trim();
+        const email    = document.getElementById('u-email').value.trim();
+        const job      = document.getElementById('u-job').value.trim();
+        const role     = document.getElementById('u-role').value;
+        const password = document.getElementById('u-password')?.value || '';
+
+        const isUUID = (val) => val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+        try {
+            if (isEdit) {
+                // Editar usuário existente
+                const updates = { full_name: name, email, job_title: job, role, updated_at: new Date().toISOString() };
+                if (isUUID(id)) {
+                    const { error } = await supabase.from('profiles').update(updates).eq('id', id);
+                    if (error) throw error;
+                }
+                const idx = AppState.users.findIndex(u => u.id === id);
+                if (idx >= 0) AppState.users[idx] = { ...AppState.users[idx], ...updates };
+                showToast('Usuário atualizado!');
+            } else {
+                // Criar novo usuário na tabela profiles (sem criar auth)
+                // Gerar UUID no cliente para garantir consistência
+                const newId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+                const newUser = {
+                    id: newId,
+                    full_name: name,
+                    email,
+                    job_title: job,
+                    role,
+                    avatar_url: '',
+                    updated_at: new Date().toISOString()
+                };
+                if (isUUID(newId)) {
+                    const { error } = await supabase.from('profiles').insert([newUser]);
+                    if (error) throw error;
+                }
+                AppState.users.push(newUser);
+                showToast('Usuário cadastrado!');
+            }
+
+            close();
+            renderUsersTable();
+        } catch (err) {
+            console.error('Erro ao salvar usuário:', err);
+            alert('Erro ao salvar usuário: ' + err.message);
+        } finally {
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = isEdit ? 'Salvar Alterações' : 'Cadastrar Usuário'; }
         }
-
-        close();
-        renderUsersTable();
     };
 }
 
