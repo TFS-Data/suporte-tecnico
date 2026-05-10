@@ -91,4 +91,4 @@ O sistema implementa políticas de segurança rigorosas no PostgreSQL:
 Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
 
 ---
-Desenvolvido por **[Seu Nome/TFS Data]** - 2024
+*Desenvolvido por [TFS-Data](https://github.com/TFS-Data).*
