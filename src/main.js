@@ -563,11 +563,16 @@ function saveTicket(id, modalEl) {
     const clientId = (isNew ? AppState.user.id : AppState.tickets.find(t => t.id === id).client_id);
     const validClientId = (clientId && clientId.includes('-')) ? clientId : null;
 
+    const catId = document.getElementById('tk-category').value;
+    const statId = document.getElementById('tk-status').value;
+    const validCatId = (catId && catId.includes('-')) ? catId : null;
+    const validStatId = (statId && statId.includes('-')) ? statId : null;
+
     const data = {
         title: document.getElementById('tk-title').value,
         description: document.getElementById('tk-desc').value,
-        category_id: document.getElementById('tk-category').value || null,
-        status_id: document.getElementById('tk-status').value || null,
+        category_id: validCatId,
+        status_id: validStatId,
         priority: document.getElementById('tk-priority').value,
         assigned_to_id: null,
         client_id: validClientId,
