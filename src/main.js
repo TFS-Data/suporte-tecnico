@@ -233,15 +233,19 @@ function setupEventListeners() {
     // Dropdowns
     const userTrigger = document.getElementById('user-menu-trigger');
     const userDropdown = document.getElementById('user-dropdown');
-    userTrigger.onclick = (e) => { e.stopPropagation(); userDropdown.classList.toggle('hidden'); };
+    if (userTrigger && userDropdown) {
+        userTrigger.onclick = (e) => { e.stopPropagation(); userDropdown.classList.toggle('hidden'); };
+    }
 
     const helpBtn = document.getElementById('btn-help');
     const helpDropdown = document.getElementById('help-dropdown');
-    helpBtn.onclick = (e) => { 
-        e.stopPropagation(); 
-        helpDropdown.classList.toggle('hidden'); 
-        renderHelpInfo();
-    };
+    if (helpBtn && helpDropdown) {
+        helpBtn.onclick = (e) => { 
+            e.stopPropagation(); 
+            helpDropdown.classList.toggle('hidden'); 
+            renderHelpInfo();
+        };
+    }
 
     window.onclick = () => { 
         userDropdown.classList.add('hidden'); 
@@ -498,7 +502,7 @@ function renderTicketsTable(filtered = null) {
         
         return `
         <tr class="hover:bg-surface-container-lowest transition-colors cursor-pointer group" onclick="openTicketModal('${t.id}')">
-            <td class="p-md font-bold text-secondary">${t.id.startsWith('TK-') ? '#' + t.id : '#' + t.id}</td>
+            <td class="p-md font-bold text-secondary">#${t.id.includes('-') ? t.id.split('-')[0].toUpperCase() : t.id}</td>
             <td class="p-md font-medium text-on-surface group-hover:text-secondary transition-colors">${t.title}</td>
             <td class="p-md">
                 <span class="bg-surface-container border border-outline-variant/30 text-on-surface-variant px-sm py-xs rounded text-[11px] font-bold">
@@ -561,7 +565,7 @@ function saveTicket(id, modalEl) {
     };
 
     const action = isNew 
-        ? supabase.from('tickets').insert([{ ...data, id: 'TK-' + Math.floor(Math.random() * 9000 + 1000) }])
+        ? supabase.from('tickets').insert([data])
         : supabase.from('tickets').update(data).eq('id', id);
 
     action.then(({ error }) => {
@@ -595,7 +599,7 @@ function renderReportsTable(tickets) {
 
         return `
         <tr class="hover:bg-surface-container-lowest transition-colors cursor-pointer" onclick="openTicketModal('${t.id}')">
-            <td class="p-md text-[12px] text-secondary font-bold">#${t.id}</td>
+            <td class="p-md text-[12px] text-secondary font-bold">#${t.id.includes('-') ? t.id.split('-')[0].toUpperCase() : t.id}</td>
             <td class="p-md text-body-sm text-on-surface font-medium">${t.title}</td>
             <td class="p-md text-[12px]"><span class="bg-secondary/10 text-secondary px-sm py-xs rounded">${cat.name}</span></td>
             <td class="p-md"><span class="text-${pColor} font-bold text-[12px]">${t.priority}</span></td>
