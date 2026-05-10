@@ -518,31 +518,31 @@ function renderTicketsTable(filtered = null) {
         const priorityColor = getPriorityColor(t.priority);
         
         return `
-        <tr class="hover:bg-surface-container-lowest transition-colors cursor-pointer group" onclick="openTicketModal('${t.id}')">
-            <td class="p-md font-bold text-secondary">#${t.id.includes('-') ? t.id.split('-')[0].toUpperCase() : t.id}</td>
-            <td class="p-md font-medium text-on-surface group-hover:text-secondary transition-colors">${t.title}</td>
-            <td class="p-md">
+        <tr class="hover:bg-surface-container-lowest transition-colors cursor-pointer group">
+            <td class="p-md font-bold text-secondary" onclick="window.openTicketModal('${t.id}')">#${t.id.includes('-') ? t.id.split('-')[0].toUpperCase() : t.id}</td>
+            <td class="p-md font-medium text-on-surface group-hover:text-secondary transition-colors" onclick="window.openTicketModal('${t.id}')">${t.title}</td>
+            <td class="p-md" onclick="window.openTicketModal('${t.id}')">
                 <span class="bg-surface-container border border-outline-variant/30 text-on-surface-variant px-sm py-xs rounded text-[11px] font-bold">
                     ${cat.name}
                 </span>
             </td>
-            <td class="p-md">
+            <td class="p-md" onclick="window.openTicketModal('${t.id}')">
                 <span class="text-${priorityColor} font-bold flex items-center gap-xs text-[12px]">
                     <span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">${priorityIcon}</span>
                     ${t.priority}
                 </span>
             </td>
-            <td class="p-md">
+            <td class="p-md" onclick="window.openTicketModal('${t.id}')">
                 <span class="bg-${status.type}/10 text-${status.type} px-sm py-xs rounded-full text-[11px] font-bold flex items-center gap-xs w-max">
                     <span class="w-2 h-2 rounded-full bg-${status.type}"></span>
                     ${status.name}
                 </span>
             </td>
             <td class="p-md text-right whitespace-nowrap">
-                <button class="text-on-surface-variant hover:text-secondary p-xs transition-colors">
+                <button onclick="window.openTicketModal('${t.id}')" title="Ver/Editar" class="text-on-surface-variant hover:text-secondary p-xs transition-colors">
                     <span class="material-symbols-outlined text-[20px]">visibility</span>
                 </button>
-                <button class="text-secondary hover:text-secondary-container p-xs ml-xs transition-colors">
+                <button onclick="window.openTicketModal('${t.id}')" title="Atribuir" class="text-secondary hover:text-secondary-container p-xs ml-xs transition-colors">
                     <span class="material-symbols-outlined text-[20px]">person_add</span>
                 </button>
             </td>
@@ -551,7 +551,12 @@ function renderTicketsTable(filtered = null) {
 }
 
 function openTicketModal(id = null) {
+    // Evitar abrir múltiplos modais
+    const existing = document.getElementById('modal-container');
+    if (existing) existing.remove();
+
     const ticket = id ? AppState.tickets.find(t => t.id === id) : { title: '', description: '', priority: 'Baixa', created_at: new Date() };
+    if (!ticket) return;
     const supportUsers = AppState.users.filter(u => ['Administrador', 'Técnico'].includes(u.role));
     
     const div = document.createElement('div');
@@ -561,11 +566,15 @@ function openTicketModal(id = null) {
 
     document.getElementById('close-modal').onclick = () => div.remove();
     document.getElementById('btn-cancel').onclick = () => div.remove();
+    // Fechar ao clicar fora
+    div.querySelector('#ticket-modal-overlay').onclick = (e) => { if (e.target.id === 'ticket-modal-overlay') div.remove(); };
     document.getElementById('form-ticket').onsubmit = (e) => {
         e.preventDefault();
         saveTicket(ticket.id, div);
     };
 }
+// Expor globalmente para uso em onclick inline no HTML gerado dinamicamente
+window.openTicketModal = openTicketModal;
 
 function saveTicket(id, modalEl) {
     const isNew = !id;
@@ -641,7 +650,7 @@ function renderReportsTable(tickets) {
         const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString('pt-BR') : '-';
 
         return `
-        <tr class="hover:bg-surface-container-lowest transition-colors cursor-pointer" onclick="openTicketModal('${t.id}')">
+        <tr class="hover:bg-surface-container-lowest transition-colors cursor-pointer" onclick="window.openTicketModal('${t.id}')">
             <td class="p-md text-[12px] text-secondary font-bold">#${t.id.includes('-') ? t.id.split('-')[0].toUpperCase() : t.id}</td>
             <td class="p-md text-body-sm text-on-surface font-medium">${t.title}</td>
             <td class="p-md text-[12px]"><span class="bg-secondary/10 text-secondary px-sm py-xs rounded">${cat.name}</span></td>
@@ -649,7 +658,7 @@ function renderReportsTable(tickets) {
             <td class="p-md"><span class="bg-surface-container-low border border-outline-variant/30 text-on-surface px-sm py-xs rounded-full text-[11px] font-bold">${status.name}</span></td>
             <td class="p-md text-[12px] text-on-surface-variant">${dateStr}</td>
             <td class="p-md text-right">
-                <span class="material-symbols-outlined text-outline text-[18px]">chevron_right</span>
+                <span class="material-symbols-outlined text-secondary text-[18px]">edit</span>
             </td>
         </tr>`;
     }).join('') : '<tr><td colspan="7" class="p-xl text-center text-outline-variant italic">Nenhum chamado encontrado.</td></tr>';
@@ -1115,20 +1124,52 @@ function showToast(msg, type = 'success') {
     setTimeout(() => toast.remove(), 3000);
 }
 
-function handleLogin(e) {
+async function handleLogin(e) {
     e.preventDefault();
-    const email = document.getElementById('email').value;
+    const emailVal = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
-    const errorEl = document.getElementById('login-error');
+    const errorEl  = document.getElementById('login-error');
+    const btnLogin = document.getElementById('login-form')?.querySelector('button[type="submit"]');
 
-    // MOCK LOGIN para desenvolvimento
-    const user = AppState.users.find(u => (u.email === email || email === 'admin') && password === 'admin');
+    if (btnLogin) { btnLogin.disabled = true; btnLogin.textContent = 'Entrando...'; }
+
+    // Aceita login 'admin' ou email real; senha deve ser 'admin'
+    if (password !== 'admin') {
+        errorEl.classList.remove('hidden');
+        if (btnLogin) { btnLogin.disabled = false; btnLogin.textContent = 'Entrar'; }
+        return;
+    }
+
+    // Buscar usuário na tabela profiles do banco
+    let user = null;
+    try {
+        let query = supabase.from('profiles').select('*');
+        if (emailVal === 'admin') {
+            // Login pelo alias 'admin' → pega o primeiro Administrador
+            query = query.eq('role', 'Administrador').limit(1);
+        } else {
+            query = query.eq('email', emailVal).limit(1);
+        }
+        const { data } = await query.maybeSingle();
+        user = data;
+    } catch (err) {
+        console.warn('Erro ao buscar usuário no banco, usando mock:', err.message);
+    }
+
+    // Fallback: tentar no AppState.users (lista carregada do banco)
+    if (!user) {
+        user = AppState.users.find(u => (u.email === emailVal || emailVal === 'admin') );
+    }
+
+    if (btnLogin) { btnLogin.disabled = false; btnLogin.textContent = 'Entrar'; }
 
     if (user) {
         AppState.session = { user, token: 'mock-token' };
         localStorage.setItem('sb-session', JSON.stringify(AppState.session));
         AppState.user = user;
         showLayout();
+        // Carregar chamados após login
+        loadTickets().catch(err => console.warn('Tickets offline:', err.message));
     } else {
         errorEl.classList.remove('hidden');
     }
