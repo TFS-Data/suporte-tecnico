@@ -710,6 +710,7 @@ function initSettings() {
                 email:     document.getElementById('prof-email').value.trim(),
                 phone:     document.getElementById('prof-phone').value.trim(),
                 job_title: document.getElementById('prof-job').value.trim(),
+                avatar_url: AppState.user.avatar_url,
                 updated_at: new Date().toISOString()
             };
 
@@ -746,6 +747,12 @@ function initSettings() {
                 const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(data.path);
                 AppState.user.avatar_url = publicUrl;
                 document.getElementById('profile-preview').src = publicUrl;
+                
+                const isUUID = (val) => val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+                if (isUUID(AppState.user.id)) {
+                    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', AppState.user.id);
+                }
+
                 updateUI();
                 showToast('Foto atualizada!');
             } catch (err) { alert("Erro avatar: " + err.message); }
