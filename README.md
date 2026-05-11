@@ -74,7 +74,7 @@ VITE_SUPABASE_ANON_KEY=sua-chave-anonima-aqui
 # Inicie o servidor de desenvolvimento
 npm run dev
 ```
-Acesse `http://localhost:5173` no seu navegador.
+
 
 ---
 
